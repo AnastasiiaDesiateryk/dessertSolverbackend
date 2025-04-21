@@ -15,11 +15,11 @@ public class DessertRequestDTO {
     public List<ConstraintDTO> constraints;
     public boolean allow_deviation;
 
-    public static class IngredientDTO {
-        public String name;
-        public double price;
-        public double calories;
-    }
+//    public static class IngredientDTO {
+//        public String name;
+//        public double price;
+//        public double calories;
+//    }
 
     public static class GoalDTO {
         public String target_type; // "ingredient", "price", "calories"
@@ -30,6 +30,7 @@ public class DessertRequestDTO {
     public static class ConstraintDTO {
         public String left;   // name of ingredient or "price", "calories", "weight"
         public String op;     // one of: ">", ">=", "<", "<=", "=="
-        public double right;  // constraint value
+        public double right;// constraint value
+        public boolean allow_deviation;
     }
 }

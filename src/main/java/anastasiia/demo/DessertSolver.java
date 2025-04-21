@@ -1,18 +1,16 @@
+
 package anastasiia.demo;
 
-import org.ojalgo.optimisation.ExpressionsBasedModel;
-import org.ojalgo.optimisation.Optimisation;
-import org.ojalgo.optimisation.Variable;
-import org.ojalgo.optimisation.Expression;
-
-import java.util.HashMap;
+import anastasiia.demo.IngredientDTO;
+import org.ojalgo.optimisation.*;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class DessertSolver {
 
     public static Map<String, Object> solve(DessertRequestDTO request) {
-        List<DessertRequestDTO.IngredientDTO> ingredients = request.ingredients;
+        List<IngredientDTO> ingredients = request.ingredients;
 
         Variable[] x = new Variable[ingredients.size()];
         for (int i = 0; i < ingredients.size(); i++) {
@@ -22,25 +20,25 @@ public class DessertSolver {
         ExpressionsBasedModel model = new ExpressionsBasedModel();
         for (Variable v : x) model.addVariable(v);
 
-        double maxPrice = request.max_price;
-        double maxCalories = request.max_calories;
-        int aestheticIndex = request.aesthetic_ingredient_index;
-        double minAestheticPercent = request.min_aesthetic_percent;
-
-        if (maxPrice > 0) {
-            Expression priceExpr = model.addExpression("Price").upper(maxPrice);
+        if (request.max_price > 0) {
+            Expression priceExpr = model.addExpression("Price").upper(request.max_price);
             for (int i = 0; i < x.length; i++) priceExpr.set(x[i], ingredients.get(i).price);
         }
 
-        if (maxCalories > 0) {
-            Expression calExpr = model.addExpression("Calories").upper(maxCalories);
+        if (request.max_calories > 0) {
+            Expression calExpr = model.addExpression("Calories").upper(request.max_calories);
             for (int i = 0; i < x.length; i++) calExpr.set(x[i], ingredients.get(i).calories);
+        }
+
+        if (request.total_weight > 0) {
+            Expression weightExpr = model.addExpression("TotalWeight").level(request.total_weight);
+            for (int i = 0; i < x.length; i++) weightExpr.set(x[i], 1.0);
         }
 
         Expression aestheticExpr = model.addExpression("Aesthetic").lower(0);
         for (int i = 0; i < x.length; i++) {
-            if (i == aestheticIndex) aestheticExpr.set(x[i], 1.0);
-            else aestheticExpr.set(x[i], -minAestheticPercent);
+            if (i == request.aesthetic_ingredient_index) aestheticExpr.set(x[i], 1.0);
+            else aestheticExpr.set(x[i], -request.min_aesthetic_percent);
         }
 
         if (ingredients.size() >= 2) {
@@ -52,7 +50,7 @@ public class DessertSolver {
 
         if (request.constraints != null) {
             for (DessertRequestDTO.ConstraintDTO c : request.constraints) {
-                Expression customExpr = model.addExpression("Custom_" + c.left);
+                Expression customExpr = model.addExpression("Custom_" + c.left + "_" + c.op + "_" + c.right);
                 boolean matched = false;
 
                 for (int i = 0; i < ingredients.size(); i++) {
@@ -66,31 +64,41 @@ public class DessertSolver {
                 if (!matched) {
                     switch (c.left.toLowerCase()) {
                         case "price":
-                            for (int i = 0; i < x.length; i++)
-                                customExpr.set(x[i], ingredients.get(i).price);
+                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], ingredients.get(i).price);
                             break;
                         case "calories":
-                            for (int i = 0; i < x.length; i++)
-                                customExpr.set(x[i], ingredients.get(i).calories);
+                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], ingredients.get(i).calories);
                             break;
                         case "weight":
-                            for (int i = 0; i < x.length; i++)
-                                customExpr.set(x[i], 1.0);
+                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], 1.0);
                             break;
                     }
                 }
 
+                double tolerance = c.allow_deviation ? c.right * 0.10 : 0;
                 switch (c.op) {
-                    case "==": customExpr.level(c.right); break;
-                    case "<":  customExpr.upper(c.right - 1e-6); break;
-                    case "<=": customExpr.upper(c.right); break;
-                    case ">":  customExpr.lower(c.right + 1e-6); break;
-                    case ">=": customExpr.lower(c.right); break;
+                    case "==":
+                        customExpr.lower(c.right - tolerance);
+                        customExpr.upper(c.right + tolerance);
+                        break;
+                    case "<":
+                        customExpr.upper(c.right - 1e-6 + tolerance);
+                        break;
+                    case "<=":
+                        customExpr.upper(c.right + tolerance);
+                        break;
+                    case ">":
+                        customExpr.lower(c.right + 1e-6 - tolerance);
+                        break;
+                    case ">=":
+                        customExpr.lower(c.right - tolerance);
+                        break;
                 }
             }
         }
 
         Expression objective = model.addExpression("Objective");
+        boolean isMinimize = false;
 
         if (request.goal != null) {
             String type = request.goal.target_type;
@@ -117,6 +125,7 @@ public class DessertSolver {
                 objective.weight(1.0);
             } else {
                 objective.weight(-1.0);
+                isMinimize = true;
             }
         } else {
             for (int i = 0; i < x.length; i++) {
@@ -127,13 +136,25 @@ public class DessertSolver {
 
         Optimisation.Result result = model.maximise();
 
-        Map<String, Object> output = new HashMap<>();
+        Map<String, Object> output = new LinkedHashMap<>();
+        double totalWeight = 0;
+        double totalPrice = 0;
+        double totalCalories = 0;
+
         for (int i = 0; i < x.length; i++) {
-            output.put(ingredients.get(i).name, result.get(i).doubleValue());
+            double qty = result.get(i).doubleValue();
+            output.put(ingredients.get(i).name, qty);
+            totalWeight += qty;
+            totalPrice += qty * ingredients.get(i).price;
+            totalCalories += qty * ingredients.get(i).calories;
         }
+
         output.put("status", result.getState().toString());
-        output.put("objective_value", result.getValue());
+        output.put("price", totalPrice);
+        output.put("total_weight", totalWeight);
+        output.put("total_calories", totalCalories);
 
         return output;
     }
 }
+
