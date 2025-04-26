@@ -20,30 +20,8 @@ A Java + Spring Boot backend service to solve a linear programming dessert optim
 
 ## Project Structure
 
-src
-├── main
-│   └── java
-│       └── anastasiia.demo
-│           ├── controller
-│           │   └── DemoApplication.java        # Main Spring Boot Controller
-│           ├── dto
-│           │   ├── DessertRequestDTO.java       # Request DTO
-│           │   ├── DessertResultDTO.java        # Result DTO
-│           │   └── IngredientDTO.java           # Ingredient DTO
-│           ├── enums
-│           │   ├── Direction.java               # Enum: Direction
-│           │   ├── Operator.java                # Enum: Operator
-│           │   └── TargetType.java              # Enum: TargetType
-│           └── solver
-│               └── DessertSolver.java           # Optimization Solver
-├── resources
-│   
-└── test
-    └── java
-        └── anastasiia.demo
-            ├── DemoApplicationTests.java        # Spring Boot Application Tests
-            └── DessertSolverTest.java            # Full unit tests for solver
-
+src ├── main │ └── java │ └── anastasiia.demo │ ├── controller │ │ └── DemoApplication.java # Main Spring Boot Controller │ ├── dto │ │ ├── DessertRequestDTO.java # Request DTO (input format) │ │ ├── DessertResultDTO.java # Result DTO (output format) │ │ └── IngredientDTO.java # Ingredient model │ ├── enums │ │ ├── Direction.java # Optimization direction (maximize/minimize) │ │ ├── Operator.java # Constraint operators (>=, <=, ==) │ │ └── TargetType.java # Target optimization field (price, calories, etc.) │ └── solver │ └── DessertSolver.java # Core optimization solver ├── resources │
+└── test └── java └── anastasiia.demo ├── DemoApplicationTests.java # Spring Boot application tests └── DessertSolverTest.java # Full unit tests for solver logic
 
 ## API Endpoints
 
@@ -64,8 +42,7 @@ mvn test
 
 
 
+## Author
 
-Author
-Created by Anastasiia Desiateryk
-Open for collaboration and professional opportunities
-
+Created by **Anastasiia Desiateryk**  
+Open for **collaboration and professional opportunities**.
