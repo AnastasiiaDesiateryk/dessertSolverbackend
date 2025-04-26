@@ -44,7 +44,7 @@ src
         └── anastasiia.demo
             ├── DemoApplicationTests.java         # Spring Boot application tests
             └── DessertSolverTest.java             # Full unit tests for solver logic
-
+```
 ## API Endpoints
 
 | Method | URL | Description |
@@ -61,7 +61,7 @@ Testing
 Run all tests:
 bash
 mvn test
-
+```
 ## Author
 
 Created by **Anastasiia Desiateryk**  
