@@ -1,160 +1,212 @@
-
 package anastasiia.demo;
 
+import anastasiia.demo.Direction;
+import anastasiia.demo.TargetType;
+import anastasiia.demo.Operator;
 import anastasiia.demo.IngredientDTO;
 import org.ojalgo.optimisation.*;
+
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Solver for the dessert optimization problem based on provided constraints and goals.
+ */
 public class DessertSolver {
 
-    public static Map<String, Object> solve(DessertRequestDTO request) {
+    private static final double DEFAULT_WEIGHT_COEFFICIENT = 1.0;
+    private static final double EPSILON = 1e-6;
+
+    /**
+     * Main entry point to solve the optimization request.
+     */
+    public DessertResultDTO solve(DessertRequestDTO request) {
         List<IngredientDTO> ingredients = request.ingredients;
-
-        Variable[] x = new Variable[ingredients.size()];
-        for (int i = 0; i < ingredients.size(); i++) {
-            x[i] = Variable.make(ingredients.get(i).name).lower(0);
-        }
-
+        Variable[] variables = createVariables(ingredients);
         ExpressionsBasedModel model = new ExpressionsBasedModel();
-        for (Variable v : x) model.addVariable(v);
 
-        if (request.max_price > 0) {
-            Expression priceExpr = model.addExpression("Price").upper(request.max_price);
-            for (int i = 0; i < x.length; i++) priceExpr.set(x[i], ingredients.get(i).price);
-        }
-
-        if (request.max_calories > 0) {
-            Expression calExpr = model.addExpression("Calories").upper(request.max_calories);
-            for (int i = 0; i < x.length; i++) calExpr.set(x[i], ingredients.get(i).calories);
-        }
-
-        if (request.total_weight > 0) {
-            Expression weightExpr = model.addExpression("TotalWeight").level(request.total_weight);
-            for (int i = 0; i < x.length; i++) weightExpr.set(x[i], 1.0);
-        }
-
-        Expression aestheticExpr = model.addExpression("Aesthetic").lower(0);
-        for (int i = 0; i < x.length; i++) {
-            if (i == request.aesthetic_ingredient_index) aestheticExpr.set(x[i], 1.0);
-            else aestheticExpr.set(x[i], -request.min_aesthetic_percent);
-        }
-
-        if (ingredients.size() >= 2) {
-            model.addExpression("SweetDiffPos").upper(request.max_sweet_diff)
-                    .set(x[0], 1).set(x[1], -1);
-            model.addExpression("SweetDiffNeg").upper(request.max_sweet_diff)
-                    .set(x[0], -1).set(x[1], 1);
-        }
-
-        if (request.constraints != null) {
-            for (DessertRequestDTO.ConstraintDTO c : request.constraints) {
-                Expression customExpr = model.addExpression("Custom_" + c.left + "_" + c.op + "_" + c.right);
-                boolean matched = false;
-
-                for (int i = 0; i < ingredients.size(); i++) {
-                    if (ingredients.get(i).name.equalsIgnoreCase(c.left)) {
-                        customExpr.set(x[i], 1.0);
-                        matched = true;
-                        break;
-                    }
-                }
-
-                if (!matched) {
-                    switch (c.left.toLowerCase()) {
-                        case "price":
-                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], ingredients.get(i).price);
-                            break;
-                        case "calories":
-                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], ingredients.get(i).calories);
-                            break;
-                        case "weight":
-                            for (int i = 0; i < x.length; i++) customExpr.set(x[i], 1.0);
-                            break;
-                    }
-                }
-
-                double tolerance = c.allow_deviation ? c.right * 0.10 : 0;
-                switch (c.op) {
-                    case "==":
-                        customExpr.lower(c.right - tolerance);
-                        customExpr.upper(c.right + tolerance);
-                        break;
-                    case "<":
-                        customExpr.upper(c.right - 1e-6 + tolerance);
-                        break;
-                    case "<=":
-                        customExpr.upper(c.right + tolerance);
-                        break;
-                    case ">":
-                        customExpr.lower(c.right + 1e-6 - tolerance);
-                        break;
-                    case ">=":
-                        customExpr.lower(c.right - tolerance);
-                        break;
-                }
-            }
-        }
-
-        Expression objective = model.addExpression("Objective");
-        boolean isMinimize = false;
-
-        if (request.goal != null) {
-            String type = request.goal.target_type;
-            String name = request.goal.target_name;
-            String direction = request.goal.direction;
-
-            if ("ingredient".equals(type)) {
-                for (int i = 0; i < ingredients.size(); i++) {
-                    if (ingredients.get(i).name.equals(name)) {
-                        objective.set(x[i], 1.0);
-                    }
-                }
-            } else if ("price".equals(type)) {
-                for (int i = 0; i < ingredients.size(); i++) {
-                    objective.set(x[i], ingredients.get(i).price);
-                }
-            } else if ("calories".equals(type)) {
-                for (int i = 0; i < ingredients.size(); i++) {
-                    objective.set(x[i], ingredients.get(i).calories);
-                }
-            }
-
-            if ("maximize".equalsIgnoreCase(direction)) {
-                objective.weight(1.0);
-            } else {
-                objective.weight(-1.0);
-                isMinimize = true;
-            }
-        } else {
-            for (int i = 0; i < x.length; i++) {
-                objective.set(x[i], ingredients.get(i).price);
-            }
-            objective.weight(1.0);
-        }
+        addVariablesToModel(model, variables);
+        addConstraints(model, variables, ingredients, request);
+        setObjective(model, variables, ingredients, request);
 
         Optimisation.Result result = model.maximise();
+        return buildResult(result, variables, ingredients);
+    }
 
-        Map<String, Object> output = new LinkedHashMap<>();
+    /**
+     * Create optimization variables for each ingredient.
+     */
+    private Variable[] createVariables(List<IngredientDTO> ingredients) {
+        Variable[] variables = new Variable[ingredients.size()];
+        for (int i = 0; i < ingredients.size(); i++) {
+            variables[i] = Variable.make(ingredients.get(i).name).lower(0);
+        }
+        return variables;
+    }
+
+    /**
+     * Add all created variables into the optimization model.
+     */
+    private void addVariablesToModel(ExpressionsBasedModel model, Variable[] variables) {
+        for (Variable variable : variables) {
+            model.addVariable(variable);
+        }
+    }
+
+    /**
+     * Add constraints (maximum price, calories, weight, aesthetic, and custom).
+     */
+    private void addConstraints(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        if (request.constraintsBlock != null) {
+            if (request.constraintsBlock.maxPrice > 0) addMaxPriceConstraint(model, variables, ingredients, request);
+            if (request.constraintsBlock.maxCalories > 0) addMaxCaloriesConstraint(model, variables, ingredients, request);
+            if (request.constraintsBlock.totalWeight > 0) addTotalWeightConstraint(model, variables, request);
+            if (request.constraintsBlock.constraints != null) addCustomConstraints(model, variables, ingredients, request);
+        }
+        if (request.aestheticConstraint != null && request.aestheticConstraint.ingredientName != null && !request.aestheticConstraint.ingredientName.isEmpty()) {
+            addAestheticConstraint(model, variables, ingredients, request);
+        }
+    }
+
+    private void addMaxPriceConstraint(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        Expression expr = model.addExpression("MaxPrice").upper(request.constraintsBlock.maxPrice);
+        for (int i = 0; i < variables.length; i++) {
+            expr.set(variables[i], ingredients.get(i).price);
+        }
+    }
+
+    private void addMaxCaloriesConstraint(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        Expression expr = model.addExpression("MaxCalories").upper(request.constraintsBlock.maxCalories);
+        for (int i = 0; i < variables.length; i++) {
+            expr.set(variables[i], ingredients.get(i).calories);
+        }
+    }
+
+    private void addTotalWeightConstraint(ExpressionsBasedModel model, Variable[] variables, DessertRequestDTO request) {
+        Expression expr = model.addExpression("TotalWeight").level(request.constraintsBlock.totalWeight);
+        for (Variable variable : variables) {
+            expr.set(variable, DEFAULT_WEIGHT_COEFFICIENT);
+        }
+    }
+
+    private void addAestheticConstraint(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        int targetIndex = -1;
+        for (int i = 0; i < ingredients.size(); i++) {
+            if (ingredients.get(i).name.equalsIgnoreCase(request.aestheticConstraint.ingredientName)) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex != -1 && request.aestheticConstraint.percent > 0) {
+            Expression expr = model.addExpression("AestheticConstraint");
+            for (int i = 0; i < variables.length; i++) {
+                if (i == targetIndex) {
+                    expr.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT - request.aestheticConstraint.percent);
+                } else {
+                    expr.set(variables[i], -request.aestheticConstraint.percent);
+                }
+            }
+            if ("min".equalsIgnoreCase(request.aestheticConstraint.ruleType)) {
+                expr.lower(0);
+            } else if ("max".equalsIgnoreCase(request.aestheticConstraint.ruleType)) {
+                expr.upper(0);
+            }
+        }
+    }
+
+    private void addCustomConstraints(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        for (DessertRequestDTO.ConstraintDTO constraint : request.constraintsBlock.constraints) {
+            Expression expr = model.addExpression("Custom_" + constraint.left + "_" + constraint.op + "_" + constraint.right);
+            boolean matched = false;
+
+            for (int i = 0; i < ingredients.size(); i++) {
+                if (ingredients.get(i).name.equalsIgnoreCase(constraint.left)) {
+                    expr.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT);
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                switch (constraint.left.toLowerCase()) {
+                    case "price" -> { for (int i = 0; i < variables.length; i++) expr.set(variables[i], ingredients.get(i).price); }
+                    case "calories" -> { for (int i = 0; i < variables.length; i++) expr.set(variables[i], ingredients.get(i).calories); }
+                    case "weight" -> { for (int i = 0; i < variables.length; i++) expr.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT); }
+                }
+            }
+
+            double tolerance = constraint.allowDeviation ? constraint.right * 0.10 : 0;
+            switch (constraint.op) {
+                case EQUALS -> { expr.lower(constraint.right - tolerance); expr.upper(constraint.right + tolerance); }
+                case LESS_THAN -> expr.upper(constraint.right - EPSILON + tolerance);
+                case LESS_THAN_OR_EQUAL -> expr.upper(constraint.right + tolerance);
+                case GREATER_THAN -> expr.lower(constraint.right + EPSILON - tolerance);
+                case GREATER_THAN_OR_EQUAL -> expr.lower(constraint.right - tolerance);
+            }
+        }
+    }
+
+    /**
+     * Define the optimization objective (maximize/minimize according to the goal).
+     */
+    private void setObjective(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
+        Expression objective = model.addExpression("Objective");
+
+        if (request.goal != null) {
+            switch (request.goal.targetType) {
+                case INGREDIENT -> {
+                    for (int i = 0; i < ingredients.size(); i++) {
+                        if (ingredients.get(i).name.equalsIgnoreCase(request.goal.targetName)) {
+                            objective.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT);
+                        }
+                    }
+                }
+                case PRICE -> {
+                    for (int i = 0; i < variables.length; i++) {
+                        objective.set(variables[i], ingredients.get(i).price);
+                    }
+                }
+                case CALORIES -> {
+                    for (int i = 0; i < variables.length; i++) {
+                        objective.set(variables[i], ingredients.get(i).calories);
+                    }
+                }
+            }
+            objective.weight(request.goal.direction == Direction.MAXIMIZE ? DEFAULT_WEIGHT_COEFFICIENT : -DEFAULT_WEIGHT_COEFFICIENT);
+        } else {
+            // Default goal: minimize price
+            for (int i = 0; i < variables.length; i++) {
+                objective.set(variables[i], ingredients.get(i).price);
+            }
+            objective.weight(DEFAULT_WEIGHT_COEFFICIENT);
+        }
+    }
+
+    /**
+     * Builds the DessertResultDTO from the optimization result.
+     */
+    private DessertResultDTO buildResult(Optimisation.Result result, Variable[] variables, List<IngredientDTO> ingredients) {
+        DessertResultDTO output = new DessertResultDTO();
+        output.ingredientsQuantities = new LinkedHashMap<>();
+
         double totalWeight = 0;
         double totalPrice = 0;
         double totalCalories = 0;
 
-        for (int i = 0; i < x.length; i++) {
+        for (int i = 0; i < variables.length; i++) {
             double qty = result.get(i).doubleValue();
-            output.put(ingredients.get(i).name, qty);
+            output.ingredientsQuantities.put(ingredients.get(i).name, qty);
             totalWeight += qty;
             totalPrice += qty * ingredients.get(i).price;
             totalCalories += qty * ingredients.get(i).calories;
         }
 
-        output.put("status", result.getState().toString());
-        output.put("price", totalPrice);
-        output.put("total_weight", totalWeight);
-        output.put("total_calories", totalCalories);
+        output.status = result.getState().toString();
+        output.price = totalPrice;
+        output.totalWeight = totalWeight;
+        output.totalCalories = totalCalories;
 
         return output;
     }
 }
-

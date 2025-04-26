@@ -13,13 +13,22 @@ public class DemoApplication {
 		SpringApplication.run(DemoApplication.class, args);
 	}
 
-	// Проверка, что сервер работает
+	/**
+	 * Basic health check endpoint to verify server is running.
+	 *
+	 * @return "Hello World" message
+	 */
 	@GetMapping("/")
 	public String apiRoot() {
 		return "Hello World";
 	}
 
-	// Простой тестовый endpoint
+	/**
+	 * Simple test endpoint to echo back received input.
+	 *
+	 * @param request A JSON object containing a "test" field
+	 * @return A JSON response with the same "test" value echoed
+	 */
 	@CrossOrigin(origins = "*")
 	@PostMapping("/test-endpoint")
 	public Map<String, String> testEndpoint(@RequestBody Map<String, String> request) {
@@ -27,10 +36,16 @@ public class DemoApplication {
 		return Map.of("echo", input != null ? input : "no input");
 	}
 
-	// Основной десерт-солвер
+	/**
+	 * Main API endpoint to solve the dessert optimization problem.
+	 *
+	 * @param request A DessertRequestDTO containing ingredients, constraints, and optimization goal
+	 * @return A DessertResultDTO with the optimal ingredient quantities and summary information
+	 */
 	@CrossOrigin(origins = "*")
 	@PostMapping("/solve-dessert")
-	public Map<String, Object> solveDessert(@RequestBody DessertRequestDTO request) {
-		return DessertSolver.solve(request);
+	public DessertResultDTO solveDessert(@RequestBody DessertRequestDTO request) {
+		DessertSolver solver = new DessertSolver(); // Create solver instance
+		return solver.solve(request);
 	}
 }

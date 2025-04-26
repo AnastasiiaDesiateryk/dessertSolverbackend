@@ -5,32 +5,38 @@ import java.util.List;
 public class DessertRequestDTO {
 
     public List<IngredientDTO> ingredients;
-    public double total_weight;
-    public double max_price;
-    public double max_calories;
-    public double max_sweet_diff;
-    public int aesthetic_ingredient_index;
-    public double min_aesthetic_percent;
+    public AestheticConstraint aestheticConstraint;
     public GoalDTO goal;
-    public List<ConstraintDTO> constraints;
-    public boolean allow_deviation;
+    public ConstraintsBlock constraintsBlock;
 
-//    public static class IngredientDTO {
-//        public String name;
-//        public double price;
-//        public double calories;
-//    }
-
-    public static class GoalDTO {
-        public String target_type; // "ingredient", "price", "calories"
-        public String target_name; // name of the ingredient or "price" etc.
-        public String direction;   // "maximize" or "minimize"
+    // Represents an aesthetic constraint on a specific ingredient
+    public static class AestheticConstraint {
+        public String ingredientName;   // Name of the ingredient
+        public String ruleType;         // "min" or "max"
+        public double percent;          // Required percentage
     }
 
+    // Represents the optimization goal (what to maximize/minimize)
+    public static class GoalDTO {
+        public TargetType targetType;   // Type: INGREDIENT, PRICE, CALORIES
+        public String targetName;       // Name if INGREDIENT
+        public Direction direction;     // MINIMIZE or MAXIMIZE
+    }
+
+    // Represents all constraints grouped together
+    public static class ConstraintsBlock {
+        public double maxPrice;
+        public double maxCalories;
+        public double totalWeight;
+        public List<ConstraintDTO> constraints;  // Custom user constraints
+    }
+
+    // Represents a single custom constraint
     public static class ConstraintDTO {
-        public String left;   // name of ingredient or "price", "calories", "weight"
-        public String op;     // one of: ">", ">=", "<", "<=", "=="
-        public double right;// constraint value
-        public boolean allow_deviation;
+        public String left;             // Ingredient name or "price"/"calories"/"weight"
+        public Operator op;             // Operator: EQUALS, GREATER_THAN, etc.
+        public double right;            // Target value
+        public boolean allowDeviation;  // Whether small deviation is allowed
     }
 }
+
