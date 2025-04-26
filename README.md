@@ -19,9 +19,31 @@ A Java + Spring Boot backend service to solve a linear programming dessert optim
 
 
 ## Project Structure
+```bash
 
-src ├── main │ └── java │ └── anastasiia.demo │ ├── controller │ │ └── DemoApplication.java # Main Spring Boot Controller │ ├── dto │ │ ├── DessertRequestDTO.java # Request DTO (input format) │ │ ├── DessertResultDTO.java # Result DTO (output format) │ │ └── IngredientDTO.java # Ingredient model │ ├── enums │ │ ├── Direction.java # Optimization direction (maximize/minimize) │ │ ├── Operator.java # Constraint operators (>=, <=, ==) │ │ └── TargetType.java # Target optimization field (price, calories, etc.) │ └── solver │ └── DessertSolver.java # Core optimization solver ├── resources │
-└── test └── java └── anastasiia.demo ├── DemoApplicationTests.java # Spring Boot application tests └── DessertSolverTest.java # Full unit tests for solver logic
+src
+├── main
+│   └── java
+│       └── anastasiia.demo
+│           ├── controller
+│           │   └── DemoApplication.java         # Main Spring Boot Controller
+│           ├── dto
+│           │   ├── DessertRequestDTO.java        # Request DTO (input format)
+│           │   ├── DessertResultDTO.java         # Result DTO (output format)
+│           │   └── IngredientDTO.java            # Ingredient model
+│           ├── enums
+│           │   ├── Direction.java                # Optimization direction (maximize/minimize)
+│           │   ├── Operator.java                 # Constraint operators (>=, <=, ==)
+│           │   └── TargetType.java               # Target optimization field (price, calories, etc.)
+│           └── solver
+│               └── DessertSolver.java            # Core optimization solver
+├── resources
+│   └── application.properties                    # Spring Boot config (empty for now)
+└── test
+    └── java
+        └── anastasiia.demo
+            ├── DemoApplicationTests.java         # Spring Boot application tests
+            └── DessertSolverTest.java             # Full unit tests for solver logic
 
 ## API Endpoints
 
@@ -39,8 +61,6 @@ Testing
 Run all tests:
 bash
 mvn test
-
-
 
 ## Author
 
