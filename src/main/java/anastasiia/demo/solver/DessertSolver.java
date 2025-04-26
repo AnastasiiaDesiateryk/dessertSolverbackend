@@ -1,9 +1,9 @@
-package anastasiia.demo;
+package anastasiia.demo.solver;
 
-import anastasiia.demo.Direction;
-import anastasiia.demo.TargetType;
-import anastasiia.demo.Operator;
-import anastasiia.demo.IngredientDTO;
+import anastasiia.demo.dto.DessertRequestDTO;
+import anastasiia.demo.dto.DessertResultDTO;
+import anastasiia.demo.dto.IngredientDTO;
+import anastasiia.demo.enums.Direction;
 import org.ojalgo.optimisation.*;
 
 import java.util.LinkedHashMap;
@@ -153,34 +153,37 @@ public class DessertSolver {
     private void setObjective(ExpressionsBasedModel model, Variable[] variables, List<IngredientDTO> ingredients, DessertRequestDTO request) {
         Expression objective = model.addExpression("Objective");
 
-        if (request.goal != null) {
-            switch (request.goal.targetType) {
-                case INGREDIENT -> {
-                    for (int i = 0; i < ingredients.size(); i++) {
-                        if (ingredients.get(i).name.equalsIgnoreCase(request.goal.targetName)) {
-                            objective.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT);
-                        }
-                    }
-                }
-                case PRICE -> {
-                    for (int i = 0; i < variables.length; i++) {
-                        objective.set(variables[i], ingredients.get(i).price);
-                    }
-                }
-                case CALORIES -> {
-                    for (int i = 0; i < variables.length; i++) {
-                        objective.set(variables[i], ingredients.get(i).calories);
-                    }
-                }
-            }
-            objective.weight(request.goal.direction == Direction.MAXIMIZE ? DEFAULT_WEIGHT_COEFFICIENT : -DEFAULT_WEIGHT_COEFFICIENT);
-        } else {
-            // Default goal: minimize price
+        // If goal or targetType is missing, fallback to default
+        if (request.goal == null || request.goal.targetType == null) {
             for (int i = 0; i < variables.length; i++) {
                 objective.set(variables[i], ingredients.get(i).price);
             }
             objective.weight(DEFAULT_WEIGHT_COEFFICIENT);
+            return; // Important! Exit the method early
         }
+
+        // Goal is present and valid
+        switch (request.goal.targetType) {
+            case INGREDIENT -> {
+                for (int i = 0; i < ingredients.size(); i++) {
+                    if (ingredients.get(i).name.equalsIgnoreCase(request.goal.targetName)) {
+                        objective.set(variables[i], DEFAULT_WEIGHT_COEFFICIENT);
+                    }
+                }
+            }
+            case PRICE -> {
+                for (int i = 0; i < variables.length; i++) {
+                    objective.set(variables[i], ingredients.get(i).price);
+                }
+            }
+            case CALORIES -> {
+                for (int i = 0; i < variables.length; i++) {
+                    objective.set(variables[i], ingredients.get(i).calories);
+                }
+            }
+        }
+
+        objective.weight(request.goal.direction == Direction.MAXIMIZE ? DEFAULT_WEIGHT_COEFFICIENT : -DEFAULT_WEIGHT_COEFFICIENT);
     }
 
     /**

@@ -1,4 +1,4 @@
-package anastasiia.demo;
+package anastasiia.demo.dto;
 
 public class IngredientDTO {
     public String name;

@@ -1,4 +1,8 @@
-package anastasiia.demo;
+package anastasiia.demo.dto;
+
+import anastasiia.demo.enums.Direction;
+import anastasiia.demo.enums.Operator;
+import anastasiia.demo.enums.TargetType;
 
 import java.util.List;
 

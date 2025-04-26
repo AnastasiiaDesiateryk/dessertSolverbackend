@@ -1,4 +1,4 @@
-package anastasiia.demo;
+package anastasiia.demo.dto;
 
 import java.util.Map;
 

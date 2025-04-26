@@ -1,4 +1,4 @@
-package anastasiia.demo;
+package anastasiia.demo.enums;
 
 public enum TargetType {
     INGREDIENT,

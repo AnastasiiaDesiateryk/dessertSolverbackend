@@ -1,5 +1,8 @@
-package anastasiia.demo;
+package anastasiia.demo.controller;
 
+import anastasiia.demo.dto.DessertRequestDTO;
+import anastasiia.demo.dto.DessertResultDTO;
+import anastasiia.demo.solver.DessertSolver;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.*;

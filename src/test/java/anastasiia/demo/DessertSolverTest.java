@@ -1,5 +1,12 @@
 package anastasiia.demo;
 
+import anastasiia.demo.dto.DessertRequestDTO;
+import anastasiia.demo.dto.DessertResultDTO;
+import anastasiia.demo.dto.IngredientDTO;
+import anastasiia.demo.enums.Direction;
+import anastasiia.demo.enums.Operator;
+import anastasiia.demo.enums.TargetType;
+import anastasiia.demo.solver.DessertSolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
