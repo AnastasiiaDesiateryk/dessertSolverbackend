@@ -5,6 +5,7 @@ import anastasiia.demo.dto.DessertResultDTO;
 import anastasiia.demo.dto.IngredientDTO;
 import anastasiia.demo.enums.Direction;
 import org.ojalgo.optimisation.*;
+import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.List;
 /**
  * Solver for the dessert optimization problem based on provided constraints and goals.
  */
+@Service
 public class DessertSolver {
 
     private static final double DEFAULT_WEIGHT_COEFFICIENT = 1.0;
