@@ -3,196 +3,158 @@ package anastasiia.demo;
 import anastasiia.demo.dto.DessertRequestDTO;
 import anastasiia.demo.dto.DessertResultDTO;
 import anastasiia.demo.dto.IngredientDTO;
+import anastasiia.demo.enums.ConstraintOp;
 import anastasiia.demo.enums.Direction;
-import anastasiia.demo.enums.Operator;
 import anastasiia.demo.enums.TargetType;
 import anastasiia.demo.solver.DessertSolver;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import org.junit.jupiter.params.provider.Arguments;
 
-import java.util.List;
-
-@DisplayName("DessertSolver Unit Tests")
-class DessertSolverTest {
+@DisplayName("DessertSolver Documentation-Oriented Tests")
+class DessertSolverParameterizedTest {
 
     private final DessertSolver solver = new DessertSolver();
 
-    @Nested
-    @DisplayName("Successful Cases")
-    class SuccessfulCases {
+    @ParameterizedTest
+    @MethodSource("createTestParameters")
+    @DisplayName("Given complete input when solved then exact expected result is returned")
+    void givenCompleteInput_whenSolved_thenReturnsExpected(DessertRequestDTO input, DessertResultDTO expected) {
+        DessertResultDTO actual = solver.solve(input);
 
-        @Test
-        @DisplayName("Solve a basic optimization problem")
-        void testSolveSimpleCase() {
-            // Arrange
-            IngredientDTO chocolate = new IngredientDTO();
-            chocolate.name = "Chocolate";
-            chocolate.price = 2.0;
-            chocolate.calories = 500.0;
-
-            IngredientDTO strawberry = new IngredientDTO();
-            strawberry.name = "Strawberry";
-            strawberry.price = 1.5;
-            strawberry.calories = 100.0;
-
-            DessertRequestDTO request = new DessertRequestDTO();
-            request.ingredients = List.of(chocolate, strawberry);
-
-            DessertRequestDTO.ConstraintsBlock constraintsBlock = new DessertRequestDTO.ConstraintsBlock();
-            constraintsBlock.maxPrice = 10.0;
-            constraintsBlock.maxCalories = 1500.0;
-            constraintsBlock.totalWeight = 3.0;
-            request.constraintsBlock = constraintsBlock;
-
-            DessertRequestDTO.GoalDTO goal = new DessertRequestDTO.GoalDTO();
-            goal.targetType = TargetType.PRICE;
-            goal.direction = Direction.MINIMIZE;
-            request.goal = goal;
-
-            // Act
-            DessertResultDTO result = solver.solve(request);
-
-            // Assert
-            assertEquals("OPTIMAL", result.status);
-            assertEquals(3.0, result.totalWeight, 0.001);
-            assertTrue(result.price > 0);
-            assertEquals(2, result.ingredientsQuantities.size());
-        }
+        assertEquals(expected.status, actual.status, "Status mismatch");
+        assertEquals(expected.totalWeight, actual.totalWeight, 0.0001, "Total weight mismatch");
+        assertEquals(expected.price, actual.price, 0.0001, "Price mismatch");
+        assertEquals(expected.totalCalories, actual.totalCalories, 0.0001, "Calories mismatch");
+        assertEquals(expected.ingredientsQuantities, actual.ingredientsQuantities, "Quantities mismatch");
     }
 
-    @Nested
-    @DisplayName("Advanced Constraints")
-    class AdvancedCases {
-
-        @Test
-        @DisplayName("Respect aesthetic constraint: minimum chocolate percentage")
-        void testAestheticConstraint_MinimumPercent() {
-            // Arrange
-            IngredientDTO chocolate = new IngredientDTO();
-            chocolate.name = "Chocolate";
-            chocolate.price = 2.0;
-            chocolate.calories = 500.0;
-
-            IngredientDTO cream = new IngredientDTO();
-            cream.name = "Cream";
-            cream.price = 1.0;
-            cream.calories = 300.0;
-
-            DessertRequestDTO request = new DessertRequestDTO();
-            request.ingredients = List.of(chocolate, cream);
-
-            DessertRequestDTO.ConstraintsBlock constraintsBlock = new DessertRequestDTO.ConstraintsBlock();
-            constraintsBlock.maxPrice = 10.0;
-            constraintsBlock.maxCalories = 1500.0;
-            constraintsBlock.totalWeight = 3.0;
-            request.constraintsBlock = constraintsBlock;
-
-            DessertRequestDTO.AestheticConstraint aesthetic = new DessertRequestDTO.AestheticConstraint();
-            aesthetic.ingredientName = "Chocolate";
-            aesthetic.ruleType = "min";
-            aesthetic.percent = 0.3; // at least 30%
-            request.aestheticConstraint = aesthetic;
-
-            DessertRequestDTO.GoalDTO goal = new DessertRequestDTO.GoalDTO();
-            goal.targetType = TargetType.PRICE;
-            goal.direction = Direction.MINIMIZE;
-            request.goal = goal;
-
-            // Act
-            DessertResultDTO result = solver.solve(request);
-
-            // Assert
-            double chocolateQty = result.ingredientsQuantities.get("Chocolate");
-            double totalQty = result.totalWeight;
-            double chocolatePercent = chocolateQty / totalQty;
-            assertTrue(chocolatePercent >= 0.3);
-        }
-
-        @Test
-        @DisplayName("Respect custom constraint: minimum quantity of sugar")
-        void testCustomConstraint_MinSugarQuantity() {
-            // Arrange
-            IngredientDTO sugar = new IngredientDTO();
-            sugar.name = "Sugar";
-            sugar.price = 0.5;
-            sugar.calories = 400.0;
-
-            IngredientDTO cream = new IngredientDTO();
-            cream.name = "Cream";
-            cream.price = 2.0;
-            cream.calories = 600.0;
-
-            DessertRequestDTO request = new DessertRequestDTO();
-            request.ingredients = List.of(sugar, cream);
-
-            DessertRequestDTO.ConstraintsBlock constraintsBlock = new DessertRequestDTO.ConstraintsBlock();
-            constraintsBlock.maxPrice = 10.0;
-            constraintsBlock.maxCalories = 1500.0;
-            constraintsBlock.totalWeight = 5.0;
-            request.constraintsBlock = constraintsBlock;
-
-            DessertRequestDTO.ConstraintDTO customConstraint = new DessertRequestDTO.ConstraintDTO();
-            customConstraint.left = "Sugar";
-            customConstraint.op = Operator.GREATER_THAN_OR_EQUAL;
-            customConstraint.right = 2.0;
-            customConstraint.allowDeviation = false;
-            constraintsBlock.constraints = List.of(customConstraint);
-
-            DessertRequestDTO.GoalDTO goal = new DessertRequestDTO.GoalDTO();
-            goal.targetType = TargetType.PRICE;
-            goal.direction = Direction.MINIMIZE;
-            request.goal = goal;
-
-            // Act
-            DessertResultDTO result = solver.solve(request);
-
-            // Assert
-            double sugarQty = result.ingredientsQuantities.get("Sugar");
-            assertTrue(sugarQty >= 2.0);
-        }
+    private static Stream<Arguments> createTestParameters() {
+        return Stream.of(
+                arguments(createSimpleRequest(), createExpectedSimpleResult()),
+                arguments(createAestheticRequest(), createExpectedAestheticResult()),
+                arguments(createCustomConstraintRequest(), createExpectedCustomResult())
+        );
     }
 
-    @Nested
-    @DisplayName("Error Cases")
-    class ErrorCases {
+    private static IngredientDTO ingredient(String name, double price, double calories) {
+        IngredientDTO i = new IngredientDTO();
+        i.name = name;
+        i.price = price;
+        i.calories = calories;
+        return i;
+    }
 
-        @Test
-        @DisplayName("Infeasible optimization problem due to strict constraints")
-        void testSolveInfeasibleCase() {
-            // Arrange
-            IngredientDTO sugar = new IngredientDTO();
-            sugar.name = "Sugar";
-            sugar.price = 1.0;
-            sugar.calories = 400.0;
+    private static DessertRequestDTO.GoalDTO goal(TargetType type, Direction direction) {
+        DessertRequestDTO.GoalDTO goal = new DessertRequestDTO.GoalDTO();
+        goal.targetType = type;
+        goal.direction = direction;
+        return goal;
+    }
 
-            IngredientDTO cream = new IngredientDTO();
-            cream.name = "Cream";
-            cream.price = 2.0;
-            cream.calories = 600.0;
+    private static DessertRequestDTO.ConstraintsBlock constraints(double price, double calories, double weight) {
+        DessertRequestDTO.ConstraintsBlock block = new DessertRequestDTO.ConstraintsBlock();
+        block.maxPrice = price;
+        block.maxCalories = calories;
+        block.totalWeight = weight;
+        return block;
+    }
 
-            DessertRequestDTO request = new DessertRequestDTO();
-            request.ingredients = List.of(sugar, cream);
+    private static DessertResultDTO expectedResult(String status, double weight, double price, double calories, Map<String, Double> quantities) {
+        DessertResultDTO result = new DessertResultDTO();
+        result.status = status;
+        result.totalWeight = weight;
+        result.price = price;
+        result.totalCalories = calories;
+        result.ingredientsQuantities = new LinkedHashMap<>(quantities);
+        return result;
+    }
 
-            DessertRequestDTO.ConstraintsBlock constraintsBlock = new DessertRequestDTO.ConstraintsBlock();
-            constraintsBlock.maxPrice = 1.0;
-            constraintsBlock.maxCalories = 100.0;
-            constraintsBlock.totalWeight = 3.0;
-            request.constraintsBlock = constraintsBlock;
+    private static DessertRequestDTO createSimpleRequest() {
+        DessertRequestDTO request = new DessertRequestDTO();
+        request.ingredients = List.of(
+                ingredient("Chocolate", 2.0, 500.0),
+                ingredient("Strawberry", 1.5, 100.0)
+        );
+        request.constraintsBlock = constraints(10.0, 1500.0, 3.0);
+        request.goal = goal(TargetType.PRICE, Direction.MINIMIZE);
+        return request;
+    }
 
-            DessertRequestDTO.GoalDTO goal = new DessertRequestDTO.GoalDTO();
-            goal.targetType = TargetType.PRICE;
-            goal.direction = Direction.MINIMIZE;
-            request.goal = goal;
+    private static DessertResultDTO createExpectedSimpleResult() {
+        return expectedResult(
+                "OPTIMAL",
+                3.0,
+                4.5,
+                300.0,
+                Map.of("Strawberry", 3.0, "Chocolate", 0.0)
+        );
+    }
 
-            // Act
-            DessertResultDTO result = solver.solve(request);
+    private static DessertRequestDTO createAestheticRequest() {
+        DessertRequestDTO request = new DessertRequestDTO();
+        request.ingredients = List.of(
+                ingredient("Chocolate", 2.0, 500.0),
+                ingredient("Cream", 1.0, 300.0)
+        );
+        request.constraintsBlock = constraints(10.0, 1500.0, 3.0);
 
-            // Assert
-            assertNotNull(result.status);
-            assertTrue(result.status.equalsIgnoreCase("INFEASIBLE") || result.status.equalsIgnoreCase("INVALID"));
-        }
+        DessertRequestDTO.AestheticConstraint aesthetic = new DessertRequestDTO.AestheticConstraint();
+        aesthetic.ingredientName = "Chocolate";
+        aesthetic.ruleType = "min";
+        aesthetic.percent = 0.3;
+        request.aestheticConstraint = aesthetic;
+
+        request.goal = goal(TargetType.PRICE, Direction.MINIMIZE);
+        return request;
+    }
+
+    private static DessertResultDTO createExpectedAestheticResult() {
+        return expectedResult(
+                "OPTIMAL",
+                3.0,
+                3.9,
+                1080.0,
+                Map.of("Chocolate", 0.9, "Cream", 2.1)
+        );
+    }
+
+    private static DessertRequestDTO createCustomConstraintRequest() {
+        DessertRequestDTO request = new DessertRequestDTO();
+        request.ingredients = List.of(
+                ingredient("Sugar", 0.5, 400.0),
+                ingredient("Cream", 2.0, 600.0)
+        );
+        DessertRequestDTO.ConstraintsBlock block = constraints(10.0, 2000.0, 5.0); // bumped calories
+
+        DessertRequestDTO.ConstraintDTO constraint = new DessertRequestDTO.ConstraintDTO();
+        constraint.left = "Sugar";
+        constraint.op = ConstraintOp.GREATER_THAN_OR_EQUAL;
+        constraint.right = 2.0;
+        constraint.allowDeviation = false;
+        block.constraints = List.of(constraint);
+
+        request.constraintsBlock = block;
+        request.goal = goal(TargetType.PRICE, Direction.MINIMIZE);
+        return request;
+    }
+
+    private static DessertResultDTO createExpectedCustomResult() {
+        return expectedResult(
+                "OPTIMAL",
+                5.0,
+                2.5,
+                2000.0,
+                Map.of("Sugar", 5.0, "Cream", 0.0)
+        );
     }
 }

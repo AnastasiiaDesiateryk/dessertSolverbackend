@@ -1,7 +1,7 @@
 package anastasiia.demo.dto;
 
 import anastasiia.demo.enums.Direction;
-import anastasiia.demo.enums.Operator;
+import anastasiia.demo.enums.ConstraintOp;
 import anastasiia.demo.enums.TargetType;
 
 import java.util.List;
@@ -37,10 +37,9 @@ public class DessertRequestDTO {
 
     // Represents a single custom constraint
     public static class ConstraintDTO {
-        public String left;             // Ingredient name or "price"/"calories"/"weight"
-        public Operator op;             // Operator: EQUALS, GREATER_THAN, etc.
-        public double right;            // Target value
-        public boolean allowDeviation;  // Whether small deviation is allowed
+        public String left;            // Ingredient name or "price"/"calories"/"weight"
+        public ConstraintOp op;        // Operator: EQUALS, GREATER_THAN, etc.
+        public double right;           // Target value
+        public boolean allowDeviation; // Whether small deviation is allowed
     }
 }
-
